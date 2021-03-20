@@ -82,166 +82,173 @@ clean_tweets = True
 
 if __name__ == "__main__":
 
-	# create logging to console
-	set_logger()
+    # create logging to console
+    set_logger()
 
-	logging.info('Start: {} '.format(__file__))
+    logging.info('Start: {} '.format(__file__))
 
-	# create database connection
-	db = MongoDatabase()
+    # create database connection
+    db = MongoDatabase()
 
-	# execute if set to True
-	if filter_tweets:
+    # execute if set to True
+    if filter_tweets:
 
-		"""	
-			Filter raw target tweet
-				- remove non-English tweets
-				- remove retweet
-				- remove tweets that do  not originate from an academic or scientist (by using bio text)
+        """	
+                Filter raw target tweet
+                        - remove non-English tweets
+                        - remove retweet
+                        - remove tweets that do  not originate from an academic or scientist (by using bio text)
 
-			raw tweets are stored in the collection 'raw_tweets'
-			filtered tweets will be stored in the collectin 'filtered_tweets'
-		"""
+                raw tweets are stored in the collection 'raw_tweets'
+                filtered tweets will be stored in the collectin 'filtered_tweets'
+        """
 
-		# read tweets documents from database
-		D = db.read_collection(collection = 'raw_tweets')
+        # read tweets documents from database
+        D = db.read_collection(collection='raw_tweets')
 
-		# tracker to keep track of processed tweet IDs (in case we want to repeat the process for a set of new tweets)
-		tweet_tracker = set(['{}{}'.format(x['tweet_type'], x['id']) for x in db.read_collection( collection = 'filtered_tweets')] )
+        # tracker to keep track of processed tweet IDs (in case we want to repeat the process for a set of new tweets)
+        tweet_tracker = set(['{}{}'.format(x['tweet_type'], x['id'])
+                            for x in db.read_collection(collection='filtered_tweets')])
 
-		# read academic/scientists professions (so we can filter the bio on these words)
-		academic_words = [x.strip('\n').strip('\r').lower() for x in read_plain_text(os.path.join('files', 'filter_bio', 'academic_words.txt'), read_lines = True)]
+        # read academic/scientists professions (so we can filter the bio on these words)
+        academic_words = [x.strip('\n').strip('\r').lower() for x in read_plain_text(
+            os.path.join('files', 'filter_bio', 'academic_words.txt'), read_lines=True)]
 
-		# loop over each tweet document
-		for i, d in enumerate(D):
+        # loop over each tweet document
+        for i, d in enumerate(D):
 
-			logging.debug('Processing tweet {}/{}'.format(i + 1, D.count()))
+            logging.debug('Processing tweet {}/{}'.format(i + 1, D.count()))
 
-			# check if doc already in database
-			if not '{}{}'.format(d['tweet_type'], d['id']) in tweet_tracker:
+            # check if doc already in database
+            if not '{}{}'.format(d['tweet_type'], d['id']) in tweet_tracker:
 
-				# get the raw tweet
-				tweet = d['tweet_raw']
-				# read the content of the tweet
-				text = tweet['full_text']
-				# read language
-				lang = tweet['lang']
-				# read user bio
-				bio = tweet['user']['description'].lower().replace('\n', ' ').replace('\r', ' ')
+                # get the raw tweet
+                tweet = d['tweet_raw']
+                # read the content of the tweet
+                text = tweet['full_text']
+                # read language
+                lang = tweet['lang']
+                # read user bio
+                bio = tweet['user']['description'].lower().replace(
+                    '\n', ' ').replace('\r', ' ')
 
-				# Check for language as some tweets appear in non-english
-				if lang != 'en':
-					continue
+                # Check for language as some tweets appear in non-english
+                if lang != 'en':
+                    continue
 
-				# check for retweets
-				if text.startswith('RT '):
-					continue
+                # check for retweets
+                if text.startswith('RT '):
+                    continue
 
-				# check if bio can be mapped to 1 or more academmic professions
-				matches = []
-				for w in academic_words:
-					if w in bio:
-						if ' bot ' not in bio:
-							logging.info('Academic word match in bio: {}'.format(w))
-							matches.append(w)
+                # check if bio can be mapped to 1 or more academmic professions
+                matches = []
+                for w in academic_words:
+                    if w in bio:
+                        if ' bot ' not in bio:
+                            logging.info(
+                                'Academic word match in bio: {}'.format(w))
+                            matches.append(w)
 
-				if len(matches) == 0:
-					continue
+                if len(matches) == 0:
+                    continue
 
-				# add matches so we can use it later
-				d['matches'] = matches
+                # add matches so we can use it later
+                d['matches'] = matches
 
-				# remove _id so we can save it to database again but different collection
-				del d['_id']
+                # remove _id so we can save it to database again but different collection
+                del d['_id']
 
-				# save doc to filtered_tweets collectino
-				db.insert_one_to_collection(collection = 'filtered_tweets', doc = d)
-			else:
-				logging.debug('Tweet {} already processed'.format(d['id']))
+                # save doc to filtered_tweets collectino
+                db.insert_one_to_collection(
+                    collection='filtered_tweets', doc=d)
+            else:
+                logging.debug('Tweet {} already processed'.format(d['id']))
 
-	# execute if set to True
-	if clean_tweets:
+    # execute if set to True
+    if clean_tweets:
 
-		"""
-			Clean raw tweets that have already been filtered (if not filtered, set filter_tweets to True first)
+        """
+                Clean raw tweets that have already been filtered (if not filtered, set filter_tweets to True first)
 
-			filtered tweets are stored in the collection 'filtered_tweets'
+                filtered tweets are stored in the collection 'filtered_tweets'
 
-			After cleaning, tweets are stored in the collection 'target_tweets'
+                After cleaning, tweets are stored in the collection 'target_tweets'
 
-			Cleaning/preprocessing steps
+                Cleaning/preprocessing steps
 
-				- replace new lines
-				- replace ampersand character
-				- replace @
-				- replace URL
-				- replace hashtag
-				- replace contractions
-				- replace emoticons
-				- replace emojis
-				- replace repeating charachtes : happyyyyy -> happyy
-				- replace punctuation
-				- replace specific characters
-				- replace double spaced
-				- trim leading and trailing spaces
-				- tokenize
-				- lemmatization
-		"""
+                        - replace new lines
+                        - replace ampersand character
+                        - replace @
+                        - replace URL
+                        - replace hashtag
+                        - replace contractions
+                        - replace emoticons
+                        - replace emojis
+                        - replace repeating charachtes : happyyyyy -> happyy
+                        - replace punctuation
+                        - replace specific characters
+                        - replace double spaced
+                        - trim leading and trailing spaces
+                        - tokenize
+                        - lemmatization
+        """
 
-		# read tweets documents from database
-		D = db.read_collection(collection = 'filtered_tweets')
+        # read tweets documents from database
+        D = db.read_collection(collection='filtered_tweets')
 
-		# tracker to keep track of processed tweet IDs (in case we want to repeat the process for a set of new tweets)
-		tweet_tracker = set(['{}{}'.format(x['tweet_type'], x['tweet_id']) for x in db.read_collection( collection = 'target_tweets')] )
+        # tracker to keep track of processed tweet IDs (in case we want to repeat the process for a set of new tweets)
+        tweet_tracker = set(['{}{}'.format(x['tweet_type'], x['tweet_id'])
+                            for x in db.read_collection(collection='target_tweets')])
 
-		# tracker for cleaned tweet content (so we can find duplicated content)
-		tweet_text_tracker = set()
+        # tracker for cleaned tweet content (so we can find duplicated content)
+        tweet_text_tracker = set()
 
-		# setup spacy object, so we can do some NLP things
-		nlp = setup_spacy()
+        # setup spacy object, so we can do some NLP things
+        nlp = setup_spacy()
 
-		# loop over each tweet document
-		for i, d in enumerate(D):
+        # loop over each tweet document
+        for i, d in enumerate(D):
 
-			logging.debug('Processing tweet {}/{}'.format(i + 1, D.count()))
+            logging.debug('Processing tweet {}/{}'.format(i + 1, D.count()))
 
-			# check if doc already in database
-			if not '{}{}'.format(d['tweet_type'], d['id']) in tweet_tracker:
+            # check if doc already in database
+            if not '{}{}'.format(d['tweet_type'], d['id']) in tweet_tracker:
 
-				# get the original tweet text
-				raw_text = d['tweet_raw']['full_text']
+                # get the original tweet text
+                raw_text = d['tweet_raw']['full_text']
 
-				# preprocess the tweet text
-				text = clean_tweet(raw_text)
+                # preprocess the tweet text
+                text = clean_tweet(raw_text)
 
-				# tokenize the tweet text
-				tokens = get_tokens(text)
+                # tokenize the tweet text
+                tokens = get_tokens(text)
 
-				# convert to lemma
-				tokens = get_lemma(nlp(' '.join(tokens)))
+                # convert to lemma
+                tokens = get_lemma(nlp(' '.join(tokens)))
 
-				# convert list to string again
-				text = ' '.join(tokens).encode('utf-8')
-				
-				# create new document so we can insert it into the database
-				new_doc = {}
-				new_doc['tweet_id'] = d['id']
-				new_doc['tweet_date'] = d['tweet_date']
-				new_doc['tweet_type'] = d['tweet_type']
-				new_doc['text'] = text
-				new_doc['raw_text'] = raw_text
-				new_doc['bio'] = d['tweet_raw']['user']['description'].lower().replace('\n', ' ').replace('\r', ' ')
-				new_doc['matches'] = d['matches']
+                # convert list to string again
+                text = ' '.join(tokens).encode('utf-8')
 
-				# occasionally tweets will duplicate the tweet, even though they have different tweet IDs, they are the same and should not be included in the analysis
-				# we utilize a somewhat crude way of finding duplicates, that is, the content of the cleaned tweet. The reason why we don't compare the raw content is that
-				# the duplicated tweet often has a different URL at the end. The cleaning process will replace it into a URL placeholder, so it doesn't matter if they are different.
-				if '{}{}'.format(d['tweet_type'], text) not in tweet_text_tracker:
+                # create new document so we can insert it into the database
+                new_doc = {}
+                new_doc['tweet_id'] = d['id']
+                new_doc['tweet_date'] = d['tweet_date']
+                new_doc['tweet_type'] = d['tweet_type']
+                new_doc['text'] = text
+                new_doc['raw_text'] = raw_text
+                new_doc['bio'] = d['tweet_raw']['user']['description'].lower().replace(
+                    '\n', ' ').replace('\r', ' ')
+                new_doc['matches'] = d['matches']
 
-					# add to tracker
-					tweet_text_tracker.add('{}{}'.format(d['tweet_type'], text))
+                # occasionally tweets will duplicate the tweet, even though they have different tweet IDs, they are the same and should not be included in the analysis
+                # we utilize a somewhat crude way of finding duplicates, that is, the content of the cleaned tweet. The reason why we don't compare the raw content is that
+                # the duplicated tweet often has a different URL at the end. The cleaning process will replace it into a URL placeholder, so it doesn't matter if they are different.
+                if '{}{}'.format(d['tweet_type'], text) not in tweet_text_tracker:
 
-					# save doc to extended tweets
-					db.insert_one_to_collection(collection = 'target_tweets', doc = new_doc)
+                    # add to tracker
+                    tweet_text_tracker.add(
+                        '{}{}'.format(d['tweet_type'], text))
 
-
+                    # save doc to extended tweets
+                    db.insert_one_to_collection(
+                        collection='target_tweets', doc=new_doc)

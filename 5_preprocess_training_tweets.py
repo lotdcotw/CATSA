@@ -67,86 +67,84 @@ from helper_functions import *
 from database import MongoDatabase
 
 
-
 """
 	Script starts here
 """
 
 if __name__ == "__main__":
 
-	# create logging to console
-	set_logger()
+    # create logging to console
+    set_logger()
 
-	logging.info('Start: {} '.format(__file__))
+    logging.info('Start: {} '.format(__file__))
 
-	# create database connection
-	db = MongoDatabase()
+    # create database connection
+    db = MongoDatabase()
 
-	# name of collection to store all the training tweets to
-	db_collection = 'training_tweets'
+    # name of collection to store all the training tweets to
+    db_collection = 'training_tweets'
 
-	# setup spacy object, so we can do some NLP things
-	nlp = setup_spacy()
+    # setup spacy object, so we can do some NLP things
+    nlp = setup_spacy()
 
-	# sources to process and the collections they are stored in
-	process_sources = {	'sanders' : 'sanders_tweets_raw',
-						'semeval': 'semeval_tweets_raw',
-						'clarin13': 'clarin13_tweets_raw',
-						'hcr': 'hcr_tweets_raw',
-						'omd': 'omd_tweets_raw',
-						'stanford': 'stanford_tweets_raw',
-						'manual': 'manual_tweets_raw'}
+    # sources to process and the collections they are stored in
+    process_sources = {	'sanders': 'sanders_tweets_raw',
+                        'semeval': 'semeval_tweets_raw',
+                        'clarin13': 'clarin13_tweets_raw',
+                        'hcr': 'hcr_tweets_raw',
+                        'omd': 'omd_tweets_raw',
+                        'stanford': 'stanford_tweets_raw',
+                        'manual': 'manual_tweets_raw'}
 
-	# perform preprocessing on each training dataset
-	for source, collection in process_sources.iteritems():
+    # perform preprocessing on each training dataset
+    for source, collection in process_sources.iteritems():
 
-		logging.info('Processing tweets from source: {}'.format(source))
+        logging.info('Processing tweets from source: {}'.format(source))
 
-		# get all the raw tweets documents from collection
-		D = db.read_collection(collection = collection)
+        # get all the raw tweets documents from collection
+        D = db.read_collection(collection=collection)
 
-		# loop over each of the tweet
-		for i, d in enumerate(D):
+        # loop over each of the tweet
+        for i, d in enumerate(D):
 
-			# verbose
-			logging.debug('	-	Processing Tweet {}/{}'.format(i + 1, D.count()))
+            # verbose
+            logging.debug('	-	Processing Tweet {}/{}'.format(i + 1, D.count()))
 
-			# check if tweet could be extracted from the Twitter API (sometimes tweets are not available anymore when collecting them some time after they are created,
-			# if this is the case, the content of tweet will be None)
-			if d['tweet'] is not None:
+            # check if tweet could be extracted from the Twitter API (sometimes tweets are not available anymore when collecting them some time after they are created,
+            # if this is the case, the content of tweet will be None)
+            if d['tweet'] is not None:
 
-				# check label type is pos, neg, or neu
-				if d['label'] in ['positive', 'negative', 'neutral']:
+                # check label type is pos, neg, or neu
+                if d['label'] in ['positive', 'negative', 'neutral']:
 
-					# convert tweet content to json
-					tweet = json.loads(d['tweet'])
-					# get the original tweet text
-					raw_text = tweet['full_text']
-					# preprocess the tweet text
-					text = clean_tweet(raw_text)
-					# tokenize the tweet text
-					tokens = get_tokens(text)
-	
-					# check if at least 1 token
-					if len(tokens) > 0:
+                    # convert tweet content to json
+                    tweet = json.loads(d['tweet'])
+                    # get the original tweet text
+                    raw_text = tweet['full_text']
+                    # preprocess the tweet text
+                    text = clean_tweet(raw_text)
+                    # tokenize the tweet text
+                    tokens = get_tokens(text)
 
-						# convert to lemma
-						tokens = get_lemma(nlp(' '.join(tokens)))
-						# convert list to string again
-						text = ' '.join(tokens).encode('utf-8')
+                    # check if at least 1 token
+                    if len(tokens) > 0:
 
-						# create new document to insert into the database
-						new_doc = {}
-						# add tweet text
-						new_doc['text'] = text
-						# add raw text
-						new_doc['raw_text'] = raw_text
-						# add source
-						new_doc['source'] = source
-						# add label
-						new_doc['label'] = get_sentiment_code(d['label'])
+                        # convert to lemma
+                        tokens = get_lemma(nlp(' '.join(tokens)))
+                        # convert list to string again
+                        text = ' '.join(tokens).encode('utf-8')
 
-						# insert into database
-						db.insert_one_to_collection(collection = db_collection, doc = new_doc)
+                        # create new document to insert into the database
+                        new_doc = {}
+                        # add tweet text
+                        new_doc['text'] = text
+                        # add raw text
+                        new_doc['raw_text'] = raw_text
+                        # add source
+                        new_doc['source'] = source
+                        # add label
+                        new_doc['label'] = get_sentiment_code(d['label'])
 
-	
+                        # insert into database
+                        db.insert_one_to_collection(
+                            collection=db_collection, doc=new_doc)
