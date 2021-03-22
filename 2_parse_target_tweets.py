@@ -19,6 +19,7 @@ import json  # to work convert plain text to json
 import re  # for regular expression
 from helper_functions import *
 from database import MongoDatabase
+from config import MoR
 
 
 """
@@ -36,10 +37,6 @@ if __name__ == "__main__":
 
     # location of target tweets
     location_tweets = os.path.join('files', 'target_tweets')
-
-    # modes of research
-    modes_of_research = ['interdisciplinary',
-                         'multidisciplinary', 'transdisciplinary']
 
     # process tweets for each mode of research
     for mode in modes_of_research:

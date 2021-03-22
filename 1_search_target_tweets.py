@@ -25,7 +25,7 @@ import json
 from helper_functions import *
 from twitter import Twitter
 from datetime import datetime
-from config import API_KEY, API_SECRET
+from config import API_KEY, API_SECRET, MoR
 
 """
 	Internal Helper Functions
@@ -191,20 +191,15 @@ if __name__ == "__main__":
 
     logging.info('Start: {} '.format(__file__))
 
-    # define modes of research and their search query
-    modes_of_research = {	'interdisciplinary': 'interdisciplinary OR #interdisciplinary OR interdisciplinarity OR #interdisciplinarity',
-                          'multidisciplinary': 'multidisciplinary OR #multidisciplinary OR multidisciplinarity OR #multidisciplinarity',
-                          'transdisciplinary': 'transdisciplinary OR #transdisciplinary OR transdisciplinarity OR #transdisciplinarity'}
-
     # location to store the target tweets
     save_location = os.path.join('files', 'target_tweets')
 
     # create folders if not exist
     [create_directory(os.path.join(save_location, k))
-     for k in modes_of_research.keys()]
+     for k in MoR.keys()]
 
     # collect tweets for each mode of research by using the defined search query
-    for mode, query in modes_of_research.iteritems():
+    for mode, query in MoR.items():
 
         # verbose
         logging.info('Processing mode of research: {}'.format(mode))
