@@ -39,7 +39,7 @@ if __name__ == "__main__":
     location_tweets = os.path.join('files', 'target_tweets')
 
     # process tweets for each mode of research
-    for mode in modes_of_research:
+    for mode in MoR:
 
         logging.info('Processing mode of research: {}'.format(mode))
 
